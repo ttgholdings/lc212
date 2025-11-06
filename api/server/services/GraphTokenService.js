@@ -1,4 +1,5 @@
-const client = require('openid-client');
+// COMMENTED OUT - ES Module issue with openid-client v6
+// const client = require('openid-client');
 const { logger } = require('@librechat/data-schemas');
 const { CacheKeys } = require('librechat-data-provider');
 const { getOpenIdConfig } = require('~/strategies/openidStrategy');

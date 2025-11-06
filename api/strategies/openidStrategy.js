@@ -2,12 +2,14 @@ const undici = require('undici');
 const { get } = require('lodash');
 const fetch = require('node-fetch');
 const passport = require('passport');
-const client = require('openid-client');
+// COMMENTED OUT - ES Module issue with openid-client v6
+// const client = require('openid-client');
 const jwtDecode = require('jsonwebtoken/decode');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const { hashToken, logger } = require('@librechat/data-schemas');
 const { CacheKeys, ErrorTypes } = require('librechat-data-provider');
-const { Strategy: OpenIDStrategy } = require('openid-client/passport');
+// COMMENTED OUT - ES Module issue with openid-client v6
+// const { Strategy: OpenIDStrategy } = require('openid-client/passport');
 const {
   isEnabled,
   logHeaders,
@@ -51,7 +53,7 @@ async function customFetch(url, options) {
   }
 
   try {
-    /** @type {undici.RequestInit} */
+    // @type {undici.RequestInit}
     let fetchOptions = options;
     if (process.env.PROXY) {
       logger.info(`[openidStrategy] proxy agent configured: ${process.env.PROXY}`);
@@ -73,7 +75,7 @@ async function customFetch(url, options) {
       logger.warn(`[openidStrategy] Non-standard WWW-Authenticate header found in successful response (200 OK): ${wwwAuth}.
 This violates RFC 7235 and may cause issues with strict OAuth clients. Removing header for compatibility.`);
 
-      /** Cloned response without the WWW-Authenticate header */
+      // Cloned response without the WWW-Authenticate header
       const responseBody = await response.arrayBuffer();
       const newHeaders = new Headers();
       for (const [key, value] of response.headers.entries()) {
@@ -99,6 +101,10 @@ This violates RFC 7235 and may cause issues with strict OAuth clients. Removing 
 /** @typedef {Configuration | null}  */
 let openidConfig = null;
 
+// ============================================================================
+// COMMENTED OUT - All OpenID-related code that depends on openid-client
+// ============================================================================
+/*
 //overload currenturl function because of express version 4 buggy req.host doesn't include port
 //More info https://github.com/panva/openid-client/pull/713
 
@@ -121,7 +127,7 @@ class CustomOpenIDStrategy extends OpenIDStrategy {
       );
     }
 
-    /** Generate nonce for federated providers that require it */
+    //Generate nonce for federated providers that require it
     const shouldGenerateNonce = isEnabled(process.env.OPENID_GENERATE_NONCE);
     if (shouldGenerateNonce && !params.has('nonce') && this._sessionKey) {
       const crypto = require('crypto');
@@ -134,14 +140,7 @@ class CustomOpenIDStrategy extends OpenIDStrategy {
   }
 }
 
-/**
- * Exchange the access token for a new access token using the on-behalf-of flow if required.
- * @param {Configuration} config
- * @param {string} accessToken access token to be exchanged if necessary
- * @param {string} sub - The subject identifier of the user. usually found as "sub" in the claims of the token
- * @param {boolean} fromCache - Indicates whether to use cached tokens.
- * @returns {Promise<string>} The new access token if exchanged, otherwise the original access token.
- */
+// Exchange the access token for a new access token using the on-behalf-of flow if required.
 const exchangeAccessTokenIfNeeded = async (config, accessToken, sub, fromCache = false) => {
   const tokensCache = getLogStores(CacheKeys.OPENID_EXCHANGED_TOKENS);
   const onBehalfFlowRequired = isEnabled(process.env.OPENID_ON_BEHALF_FLOW_FOR_USERINFO_REQUIRED);
@@ -173,13 +172,7 @@ const exchangeAccessTokenIfNeeded = async (config, accessToken, sub, fromCache =
   return accessToken;
 };
 
-/**
- * get user info from openid provider
- * @param {Configuration} config
- * @param {string} accessToken access token
- * @param {string} sub - The subject identifier of the user. usually found as "sub" in the claims of the token
- * @returns {Promise<Object|null>}
- */
+// get user info from openid provider
 const getUserInfo = async (config, accessToken, sub) => {
   try {
     const exchangedAccessToken = await exchangeAccessTokenIfNeeded(config, accessToken, sub);
@@ -189,6 +182,8 @@ const getUserInfo = async (config, accessToken, sub) => {
     return null;
   }
 };
+*/
+// ============================================================================
 
 /**
  * Downloads an image from a URL using an access token.
@@ -282,21 +277,16 @@ function convertToUsername(input, defaultValue = '') {
   return defaultValue;
 }
 
-/**
- * Sets up the OpenID strategy for authentication.
- * This function configures the OpenID client, handles proxy settings,
- * and defines the OpenID strategy for Passport.js.
- *
- * @async
- * @function setupOpenId
- * @returns {Promise<Configuration | null>} A promise that resolves when the OpenID strategy is set up and returns the openid client config object.
- * @throws {Error} If an error occurs during the setup process.
- */
+// COMMENTED OUT - setupOpenId function uses client and CustomOpenIDStrategy which are commented out
+/*
+// Sets up the OpenID strategy for authentication.
+// This function configures the OpenID client, handles proxy settings,
+// and defines the OpenID strategy for Passport.js.
 async function setupOpenId() {
   try {
     const shouldGenerateNonce = isEnabled(process.env.OPENID_GENERATE_NONCE);
 
-    /** @type {ClientMetadata} */
+    // @type {ClientMetadata}
     const clientMetadata = {
       client_id: process.env.OPENID_CLIENT_ID,
       client_secret: process.env.OPENID_CLIENT_SECRET,
@@ -308,7 +298,7 @@ async function setupOpenId() {
       clientMetadata.token_endpoint_auth_method = 'client_secret_post';
     }
 
-    /** @type {Configuration} */
+    // @type {Configuration}
     openidConfig = await client.discovery(
       new URL(process.env.OPENID_ISSUER),
       process.env.OPENID_CLIENT_ID,
@@ -344,10 +334,8 @@ async function setupOpenId() {
         clockTolerance: process.env.OPENID_CLOCK_TOLERANCE || 300,
         usePKCE,
       },
-      /**
-       * @param {import('openid-client').TokenEndpointResponseHelpers} tokenset
-       * @param {import('passport-jwt').VerifyCallback} done
-       */
+      // @param tokenset
+      // @param done
       async (tokenset, done) => {
         try {
           const claims = tokenset.claims();
@@ -500,8 +488,8 @@ async function setupOpenId() {
           }
 
           if (!!userinfo && userinfo.picture && !user.avatar?.includes('manual=true')) {
-            /** @type {string | undefined} */
-            const imageUrl = userinfo.picture;
+          // @type {string | undefined}
+          const imageUrl = userinfo.picture;
 
             let fileName;
             if (crypto) {
@@ -557,18 +545,21 @@ async function setupOpenId() {
     return null;
   }
 }
-/**
- * @function getOpenIdConfig
- * @description Returns the OpenID client instance.
- * @throws {Error} If the OpenID client is not initialized.
- * @returns {Configuration}
- */
-function getOpenIdConfig() {
-  if (!openidConfig) {
-    throw new Error('OpenID client is not initialized. Please call setupOpenId first.');
-  }
-  return openidConfig;
+*/
+
+// ============================================================================
+// STUB FUNCTIONS - Return null since OpenID is disabled
+// ============================================================================
+async function setupOpenId() {
+  logger.warn('[openidStrategy] setupOpenId called but OpenID is disabled (openid-client commented out)');
+  return null;
 }
+
+function getOpenIdConfig() {
+  logger.warn('[openidStrategy] getOpenIdConfig called but OpenID is disabled (openid-client commented out)');
+  return null;
+}
+// ============================================================================
 
 module.exports = {
   setupOpenId,
